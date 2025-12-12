@@ -322,6 +322,8 @@
                 Generate LaTeX
             </button>
 
+            <div id="errorMsg" style="color: #c0392b; margin-top: 15px; display: none; text-align: center; background: #fae5e3; padding: 10px; border-radius: 4px; border: 1px solid #c0392b;"></div>
+
             <div id="loading" style="display: none; text-align: center; margin-top: 15px; color: #666;">
                 Processing... (this may take a few seconds)
             </div>
@@ -331,13 +333,11 @@
                 <div style="position: relative;">
                     <pre id="latexOutput" style="background: #f4f4f4; padding: 15px; border-radius: 4px; overflow-x: auto; font-family: monospace; border: 1px solid #ddd; margin: 0;"></pre>
                     <button onclick="copyToClipboard()" style="position: absolute; top: 5px; right: 5px; background: #fff; border: 1px solid #ccc; padding: 2px 8px; font-size: 0.8rem; cursor: pointer; border-radius: 3px;">Copy</button>
-                </div>
-                
                 <h4 style="margin-top: 15px; margin-bottom: 5px;">Rendered Equation:</h4>
                 <div id="renderedMath" style="font-size: 1.2rem; padding: 10px; border: 1px solid #eee; text-align: center; min-height: 50px; display: flex; align-items: center; justify-content: center;"></div>
             </div>
-            
-            <div id="errorMsg" style="color: #c0392b; margin-top: 15px; display: none; text-align: center;"></div>
+        </div>
+    </section>
         </div>
     </section>
 
@@ -545,6 +545,11 @@
                 const data = await response.json();
 
                 if (response.ok) {
+                    // Check if there's an error message even with ok response
+                    if (data.error || !data.latex) {
+                        throw new Error(data.error || "No LaTeX output received");
+                    }
+                    
                     const latex = data.latex || data.output_sequence; // Handle different key names
                     document.getElementById('latexOutput').textContent = latex;
                     
@@ -568,8 +573,25 @@
         function copyToClipboard() {
             const text = document.getElementById('latexOutput').textContent;
             navigator.clipboard.writeText(text).then(() => {
-                alert("Copied to clipboard!");
+            const copyButton = document.querySelector('#resultContainer button');
+            copyButton.textContent = "Copied!";
+            copyButton.style.backgroundColor = "#d3d3d3"; // Optional: Change button color to indicate success
+
+            copyButton.addEventListener('mouseleave', () => {
+                setTimeout(() => {
+                copyButton.textContent = "Copy";
+                copyButton.style.backgroundColor = ""; // Reset button color
+                }, 500);
+            }, { once: true });
             });
+        }
+
+        // Add CSS to vertically align the copy button
+        const copyButton = document.querySelector('#resultContainer button');
+        if (copyButton) {
+            copyButton.style.position = "absolute";
+            copyButton.style.top = "50%";
+            copyButton.style.transform = "translateY(-50%)";
         }
     </script>
 </body>
