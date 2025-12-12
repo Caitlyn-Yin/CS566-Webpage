@@ -37,7 +37,7 @@ app = FastAPI()
 # Allow CORS so your GitHub Pages frontend can talk to this backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, replace "*" with your GitHub Pages URL
+    allow_origins=["https://caitlyn-yin.github.io/CS566-Webpage/"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -128,6 +128,8 @@ def load_model_and_tokenizer(encoder_type, decoder_type, model_path, vocab_path)
     else: # cnn
         encoder = CNNEncoder(encoded_image_size=16).to(DEVICE)
         encoder_dim = 512
+
+
         
     # 3. Initialize Decoder
     if decoder_type.lower() == 'attention':
@@ -135,7 +137,28 @@ def load_model_and_tokenizer(encoder_type, decoder_type, model_path, vocab_path)
     elif decoder_type.lower() == 'lstm':
         decoder = LSTMDecoder(vocab_size, EMBEDDING_DIM, DECODER_HIDDEN_DIM, encoder_dim, 0).to(DEVICE)
     elif decoder_type.lower() == 'transformer':
-        decoder = TransformerDecoder(vocab_size, DECODER_HIDDEN_DIM, encoder_dim, 8, 4, MAX_SEQ_LEN, 0).to(DEVICE)
+        encoder_feature_shape = None
+        try:
+            img_height, img_width = get_image_size(encoder_type.lower())
+            with torch.no_grad():
+                dummy = torch.zeros(1, 1, img_height, img_width).to(DEVICE)
+                encoder(dummy)
+            encoder_feature_shape = getattr(encoder, "last_feature_shape", None)
+        except Exception as exc:
+            print(f"Warning: unable to infer encoder feature grid ({exc}).")
+            
+        decoder = TransformerDecoder(
+            vocab_size,
+            DECODER_HIDDEN_DIM,
+            encoder_dim,
+            8,
+            3,
+            MAX_SEQ_LEN,
+            0,
+            use_2d_encoder_pos=True,
+            memory_height=encoder_feature_shape[0] if encoder_feature_shape else None,
+            memory_width=encoder_feature_shape[1] if encoder_feature_shape else None,
+        ).to(DEVICE)
     else:
         raise ValueError(f"Unknown decoder type: {decoder_type}")
 
