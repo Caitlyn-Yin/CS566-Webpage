@@ -472,9 +472,10 @@
             <strong>Key Findings:</strong>
             <ul>
                 <li>The <strong>ResNet + Attention</strong> combination performed best across all metrics.</li>
-                <li>The Exact Match (EM) score jumped from <1% (Baseline) to nearly <strong>41%</strong> with Attention, proving its necessity for handling complex 2D structures.</li>
+                <li>Among the decoders, the ResNet backbone consistently outperformed others due to its ability to capture hierarchical features and spatial relationships effectively. This makes it particularly well-suited for the complex 2D structures inherent in mathematical equations.</li>
+                <li>Interestingly, <strong>ViT</strong> backbone did not outperform the ResNet backbone. ViT underperformed due to its fixed $224 \times 224$ input requirement, necessitating excessive padding that reduced resolution for rectangular text lines. Furthermore, processing images as patch sequences compromised the fine-grained spatial recognition essential for interpreting mathematical layout structure. </li>  
+                <li>For ResNet decoder, The Exact Match (EM) score jumped from <5% (LSTM Decoder without Attention) to over <strong>41%</strong> with Attention, proving its necessity for handling complex 2D structures.</li>
                 <li>Visual attention helps the model align its focus, significantly reducing the Normalized Edit Distance (NED) to 0.0977.</li>
-                <li>Interestingly, the <strong>ViT</strong> did not outperform the ResNet backbone. ViT underperformed due to its fixed \(224 \times 224\) input requirement, necessitating excessive padding that reduced resolution for rectangular text lines. Furthermore, processing images as patch sequences compromised the fine-grained spatial recognition essential for interpreting mathematical layout structure. </li>  
             </ul>
         </p>
     </section>
