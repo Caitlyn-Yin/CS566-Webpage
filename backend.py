@@ -26,7 +26,7 @@ try:
         DEVICE, EMBEDDING_DIM, DECODER_HIDDEN_DIM, ATTENTION_DIM, MAX_SEQ_LEN
     )
     # Import inference logic from demo.py
-    from demo import predict, SOS_TOKEN, EOS_TOKEN
+    from demo import predict
 except ImportError:
     print("Error: Could not import from main.py or demo.py. Make sure they are in the root directory.")
     sys.exit(1)
@@ -46,6 +46,37 @@ app.add_middleware(
 # Global variables to hold model and tokenizer
 model = None
 tokenizer = None
+checkpoint_path = None
+checkpoint_mtime = None
+
+
+def _load_checkpoint_weights():
+    """Reloads model weights from disk if a checkpoint path is configured."""
+    global checkpoint_mtime
+    if not checkpoint_path or not os.path.exists(checkpoint_path):
+        print(f"Warning: Checkpoint path {checkpoint_path} not found. Skipping weight load.")
+        return
+
+    checkpoint = torch.load(checkpoint_path, map_location=DEVICE)
+    if isinstance(checkpoint, dict):
+        model.load_state_dict(checkpoint, strict=False)
+    else:
+        model.load_state_dict(checkpoint.state_dict())  # type: ignore[arg-type]
+    model.eval()
+    checkpoint_mtime = os.path.getmtime(checkpoint_path)
+    print(f"Model weights loaded from {checkpoint_path} (mtime={checkpoint_mtime}).")
+
+
+def maybe_reload_checkpoint():
+    """Refreshes model weights if the checkpoint file changed on disk."""
+    global checkpoint_mtime
+    if not checkpoint_path or not os.path.exists(checkpoint_path):
+        return
+
+    latest_mtime = os.path.getmtime(checkpoint_path)
+    if checkpoint_mtime is None or latest_mtime > checkpoint_mtime:
+        print("Detected updated checkpoint on disk. Reloading weights...")
+        _load_checkpoint_weights()
 
 # --- Helper: Image Preprocessing ---
 def process_image_bytes(image_bytes, encoder_type_str):
@@ -74,7 +105,7 @@ def process_image_bytes(image_bytes, encoder_type_str):
 
 # --- Helper: Model Loader ---
 def load_model_and_tokenizer(encoder_type, decoder_type, model_path, vocab_path):
-    global model, tokenizer
+    global model, tokenizer, checkpoint_path, checkpoint_mtime
     
     # 1. Load Tokenizer
     print(f"Loading Tokenizer from {vocab_path}...")
@@ -109,16 +140,14 @@ def load_model_and_tokenizer(encoder_type, decoder_type, model_path, vocab_path)
         raise ValueError(f"Unknown decoder type: {decoder_type}")
 
     model = Im2LatexModel(encoder, decoder).to(DEVICE)
-    
+
+    checkpoint_path = model_path if model_path else None
+    checkpoint_mtime = None
+
     # 4. Load Weights
-    if model_path and os.path.exists(model_path):
-        print(f"Loading weights from {model_path}...")
-        checkpoint = torch.load(model_path, map_location=DEVICE)
-        if isinstance(checkpoint, dict):
-            model.load_state_dict(checkpoint, strict=False)
-        else:
-            model = checkpoint.to(DEVICE)
-        model.eval()
+    if checkpoint_path and os.path.exists(checkpoint_path):
+        print(f"Loading weights from {checkpoint_path}...")
+        _load_checkpoint_weights()
         print("Model loaded successfully.")
     else:
         print(f"Warning: Model path {model_path} not found. Using initialized weights.")
@@ -134,6 +163,8 @@ async def predict_equation(file: UploadFile = File(...)):
     if model is None:
         return {"error": "Model not loaded. Please start server with valid arguments."}
     
+    maybe_reload_checkpoint()
+
     # 1. Read Image
     content = await file.read()
     
@@ -149,7 +180,7 @@ async def predict_equation(file: UploadFile = File(...)):
     
     try:
         # 3. Predict (using demo.py logic)
-        latex_output = predict(model, image_tensor, tokenizer)
+        latex_output = predict(model, image_tensor, tokenizer, beam_width=4)
         
         # 4. Post-processing
         latex_output = normalize_latex(latex_output)
@@ -168,16 +199,16 @@ async def predict_equation(file: UploadFile = File(...)):
 # --- Entry Point ---
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Run Im2Latex Backend Server")
-    parser.add_argument("--encoder", type=str, default="resnet", choices=["cnn", "resnet", "vit"])
-    parser.add_argument("--decoder", type=str, default="attention", choices=["lstm", "attention", "transformer"])
-    parser.add_argument("--model_path", type=str, required=True, help="Path to .pth checkpoint")
-    parser.add_argument("--vocab_path", type=str, default="./im2latex100k/vocab.json")
-    parser.add_argument("--port", type=int, default=8000)
+    parser.add_argument("--encoder", "-en", type=str, default="resnet", choices=["cnn", "resnet", "vit"])
+    parser.add_argument("--decoder", "-de", type=str, default="attention", choices=["lstm", "attention", "transformer"])
+    parser.add_argument("--checkpoint", "-cp", type=str, required=True, help="Path to .pth checkpoint")
+    parser.add_argument("--vocab", "-v", type=str, default="./im2latex100k/vocab.json")
+    parser.add_argument("--port", "-p", type=int, default=8000)
     
     args = parser.parse_args()
     
     # Load model before starting server
-    load_model_and_tokenizer(args.encoder, args.decoder, args.model_path, args.vocab_path)
+    load_model_and_tokenizer(args.encoder, args.decoder, args.checkpoint, args.vocab)
     
     # Start server
     uvicorn.run(app, host="0.0.0.0", port=args.port)
