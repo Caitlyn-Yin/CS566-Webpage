@@ -330,9 +330,10 @@
 
             <div id="resultContainer" style="margin-top: 20px; display: none;">
                 <h4 style="margin-bottom: 5px;">Generated LaTeX:</h4>
-                <div style="position: relative;">
-                    <pre id="latexOutput" style="background: #f4f4f4; padding: 15px; border-radius: 4px; overflow-x: auto; font-family: monospace; border: 1px solid #ddd; margin: 0;"></pre>
-                    <button onclick="copyToClipboard()" style="position: absolute; top: 5px; right: 5px; background: #fff; border: 1px solid #ccc; padding: 2px 8px; font-size: 0.8rem; cursor: pointer; border-radius: 3px;">Copy</button>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <pre id="latexOutput" style="background: #f4f4f4; padding: 15px; padding-right: 60px; border-radius: 4px; overflow-x: auto; font-family: monospace; border: 1px solid #ddd; margin: 0; flex: 1;"></pre>
+                    <button onclick="copyToClipboard()" style="position: absolute; right: 10px; background: #fff; border: 1px solid #ccc; padding: 2px 8px; font-size: 0.8rem; cursor: pointer; border-radius: 3px;">Copy</button>
+                </div>
                 <h4 style="margin-top: 15px; margin-bottom: 5px;">Rendered Equation:</h4>
                 <div id="renderedMath" style="font-size: 1.2rem; padding: 10px; border: 1px solid #eee; text-align: center; min-height: 50px; display: flex; align-items: center; justify-content: center;"></div>
             </div>
@@ -588,14 +589,6 @@
                 }, 500);
             }, { once: true });
             });
-        }
-
-        // Add CSS to vertically align the copy button
-        const copyButton = document.querySelector('#resultContainer button');
-        if (copyButton) {
-            copyButton.style.position = "absolute";
-            copyButton.style.top = "50%";
-            copyButton.style.transform = "translateY(-50%)";
         }
     </script>
 </body>
