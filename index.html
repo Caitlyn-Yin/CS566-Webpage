@@ -275,7 +275,7 @@
     <section id="motivation">
         <h2 class="section-title">Motivation</h2>
         <p>
-            Mathematical notation is a dense, visual language, but computers often struggle to interpret equation images as anything more than raw pixels. Standard OCR tools are designed for linear text (reading left-to-right), causing them to fail spectacularly on mathematical expressions. This is because math is highly structured and two-dimensional—relying on complex vertical and spatial relationships like nested fractions, matrix grids, integral limits, and superscript/subscript hierarchies.
+            Mathematical notation is a dense, visual language, but computers often struggle to interpret equation images as anything more than raw pixels. Standard OCR tools are designed for linear text (reading left-to-right), causing them to fail spectacularly on mathematical expressions. This is because math is highly structured and two-dimensional. It relies on complex vertical and spatial relationships like nested fractions, matrix grids, integral limits, and superscript/subscript hierarchies.
         </p>
         <p>
             This technological gap creates significant friction in the real world. For students and researchers, digitizing notes or referencing formulas from scanned papers often requires tedious manual re-typing. More importantly, it acts as a severe accessibility barrier for blind or low-vision users, as screen readers require structured code (like LaTeX or MathML) rather than raw images to verbally describe an equation.
@@ -375,6 +375,10 @@
             <li>
                 <strong>Efficient Data Preprocessing:</strong>
                 To address the significant I/O bottleneck caused by reading thousands of individual image files during training, we implemented an offline preprocessing pipeline. This step converts raw images and LaTeX tokens into pre-computed PyTorch tensors, which are serialized and saved to single <code>.pt</code> files. Loading the entire dataset into memory from these binary files resulted in a <strong>~10x increase in training speed</strong> compared to lazy loading from disk.
+            </li>
+            <li>
+                <strong>Dataset Cleaning & LaTeX Normalization:</strong>
+                LaTeX provides multiple syntactic representations for similar symbols, such as whitespace commands (<code>\:</code>, <code>\;</code>, <code>\space</code>, <code>\quad</code>), bracket notations (<code>\lbrack</code> <small>v.s.</small> <code>[</code>, <code>\rbrack</code> <small>v.s.</small> <code>]</code>), and comparison operators (<code>\le</code> <small>v.s.</small> <code>\leq</code>, <code>\ge</code> <small>v.s.</small> <code>\geq</code>). This redundancy confuses the model during inference. When generating a sequence, the decoder may inconsistently switch between equivalent representations, leading to malformed outputs or unnecessary edit distance penalties. To address this, we implemented a <strong>LaTeX normalization pipeline</strong> that standardizes all equivalent notations to a single canonical form during dataset preprocessing. This forces the model to learn and output only one consistent representation per symbol, which significantly reduces ambiguity and improves both training stability and inference accuracy.
             </li>
             <li>
                 <strong>Optimization & Regularization:</strong> 
